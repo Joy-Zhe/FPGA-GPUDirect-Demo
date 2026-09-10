@@ -1,0 +1,153 @@
+diff --git a/QDMA/linux-kernel/driver/src/cdev.c b/QDMA/linux-kernel/driver/src/cdev.c
+index b7ea455..b0fd290 100755
+--- a/QDMA/linux-kernel/driver/src/cdev.c
++++ b/QDMA/linux-kernel/driver/src/cdev.c
+@@ -25,3 +25,5 @@
+ #include <linux/device.h>
++#include <linux/dma-buf.h>
+ #include <linux/errno.h>
++#include <linux/ioctl.h>
+ #include <linux/fs.h>
+@@ -76,5 +78,16 @@ enum qdma_cdev_ioctl_cmd {
+ 	QDMA_CDEV_IOCTL_CMDS
+ };
+ 
++#define QDMA_GPU_F_DDR_TO_GPU (1U << 0)
++struct qdma_gpu_xfer {
++	__s32 dma_buf_fd;
++	__u32 flags;
++	__u64 dma_buf_offset;
++	__u64 ddr_offset;
++	__u64 length;
++	__u64 transferred;
++};
++#define QDMA_IOCTL_GPU_XFER _IOWR('q', 0xf0, struct qdma_gpu_xfer)
++
+ static struct class *qdma_class;
+ static struct kmem_cache *cdev_cache;
+@@ -215,5 +228,119 @@ static loff_t cdev_gen_llseek(struct file *file, loff_t off, int whence)
+ 	return newpos;
+ }
+ 
++static long cdev_gpu_dmabuf_xfer(struct qdma_cdev *xcdev,
++				unsigned long arg)
++{
++	struct qdma_gpu_xfer ux;
++	struct dma_buf *dbuf;
++	struct dma_buf_attachment *attach;
++	struct sg_table *sgt;
++	struct scatterlist *sg;
++	struct qdma_sw_sg *qsg, *cur;
++	struct qdma_request req = { 0 };
++	enum dma_data_direction dir;
++	u64 skip, left;
++	unsigned int i, nents = 0;
++	unsigned long qhndl;
++	ssize_t rv;
++	bool write;
++
++	if (copy_from_user(&ux, (void __user *)arg, sizeof(ux)))
++		return -EFAULT;
++	if (ux.flags & ~QDMA_GPU_F_DDR_TO_GPU)
++		return -EINVAL;
++	if (!ux.length || ux.length > UINT_MAX ||
++	    ux.ddr_offset >= (1ULL << 33) ||
++	    ux.length > (1ULL << 33) - ux.ddr_offset)
++		return -EINVAL;
++
++	dbuf = dma_buf_get(ux.dma_buf_fd);
++	if (IS_ERR(dbuf))
++		return PTR_ERR(dbuf);
++	if (ux.dma_buf_offset > dbuf->size ||
++	    ux.length > dbuf->size - ux.dma_buf_offset) {
++		rv = -EINVAL;
++		goto out_put;
++	}
++
++	write = !(ux.flags & QDMA_GPU_F_DDR_TO_GPU);
++	dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
++	attach = dma_buf_attach(dbuf, &xcdev->xcb->xpdev->pdev->dev);
++	if (IS_ERR(attach)) {
++		rv = PTR_ERR(attach);
++		goto out_put;
++	}
++	sgt = dma_buf_map_attachment(attach, dir);
++	if (IS_ERR(sgt)) {
++		rv = PTR_ERR(sgt);
++		goto out_detach;
++	}
++
++	skip = ux.dma_buf_offset;
++	left = ux.length;
++	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
++		u64 seglen = sg_dma_len(sg);
++		if (skip >= seglen) { skip -= seglen; continue; }
++		nents++;
++		seglen -= skip;
++		left -= min_t(u64, left, seglen);
++		if (!left) break;
++		skip = 0;
++	}
++	if (!nents || left || nents > 65535) {
++		rv = -EINVAL;
++		goto out_unmap;
++	}
++	qsg = kcalloc(nents, sizeof(*qsg), GFP_KERNEL);
++	if (!qsg) {
++		rv = -ENOMEM;
++		goto out_unmap;
++	}
++
++	skip = ux.dma_buf_offset;
++	left = ux.length;
++	cur = qsg;
++	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
++		u64 seglen = sg_dma_len(sg), take;
++		if (skip >= seglen) { skip -= seglen; continue; }
++		take = min_t(u64, left, seglen - skip);
++		cur->dma_addr = sg_dma_address(sg) + skip;
++		cur->len = take;
++		cur->next = (left == take) ? NULL : cur + 1;
++		left -= take;
++		if (!left) break;
++		cur++;
++		skip = 0;
++	}
++
++	qhndl = write ? xcdev->h2c_qhndl : xcdev->c2h_qhndl;
++	if (!qhndl) {
++		rv = -ENODEV;
++		goto out_free;
++	}
++	req.sgl = qsg;
++	req.sgcnt = nents;
++	req.write = write;
++	req.dma_mapped = 1;
++	req.ep_addr = ux.ddr_offset;
++	req.count = ux.length;
++	req.timeout_ms = 30000;
++	req.h2c_eot = 1;
++	rv = xcdev->fp_rw(xcdev->xcb->xpdev->dev_hndl, qhndl, &req);
++	if (rv >= 0) {
++		ux.transferred = rv;
++		rv = copy_to_user((void __user *)arg, &ux, sizeof(ux)) ? -EFAULT : 0;
++	}
++out_free:
++	kfree(qsg);
++out_unmap:
++	dma_buf_unmap_attachment(attach, sgt, dir);
++out_detach:
++	dma_buf_detach(dbuf, attach);
++out_put:
++	dma_buf_put(dbuf);
++	return rv;
++}
++
+ static long cdev_gen_ioctl(struct file *file, unsigned int cmd,
+ 			unsigned long arg)
+@@ -225,3 +352,5 @@ static long cdev_gen_ioctl(struct file *file, unsigned int cmd,
+ 		get_user(xcdev->no_memcpy, (unsigned char *)arg);
+ 		return 0;
++	case QDMA_IOCTL_GPU_XFER:
++		return cdev_gpu_dmabuf_xfer(xcdev, arg);
+ 	default:

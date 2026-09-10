@@ -1,0 +1,36 @@
+# Reproducible Vivado build output
+/build/
+/.Xil/
+/zynq_dma_ddr_demo.cache/
+/zynq_dma_ddr_demo.gen/
+/zynq_dma_ddr_demo.hw/
+/zynq_dma_ddr_demo.ip_user_files/
+/zynq_dma_ddr_demo.runs/
+/zynq_dma_ddr_demo.sim/
+/zynq_dma_ddr_demo.srcs/
+/zynq_dma_ddr_demo.xpr
+
+# Vivado journals, logs, checkpoints, and deployable artifacts
+*.jou
+*.log
+*.str
+*.dcp
+*.bit
+*.bin
+*.ltx
+*.xsa
+*.mcs
+*.prm
+
+# Host build output
+/host/gpu_p2p_test
+*.o
+*.ko
+Module.symvers
+modules.order
+
+# Editor and operating-system files
+/.vscode/
+/.idea/
+.DS_Store
+Thumbs.db
