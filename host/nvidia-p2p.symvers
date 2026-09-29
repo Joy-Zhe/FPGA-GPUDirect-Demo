@@ -1,0 +1,4 @@
+0x0596074b	nvidia_p2p_dma_map_pages	nvidia	EXPORT_SYMBOL_GPL	
+0x63fbcdc2	nvidia_p2p_dma_unmap_pages	nvidia	EXPORT_SYMBOL_GPL	
+0xfec75bb0	nvidia_p2p_get_pages_persistent	nvidia	EXPORT_SYMBOL_GPL	
+0x50bb92cd	nvidia_p2p_put_pages_persistent	nvidia	EXPORT_SYMBOL_GPL	

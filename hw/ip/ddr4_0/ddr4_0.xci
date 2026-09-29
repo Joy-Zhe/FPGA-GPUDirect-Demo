@@ -3,7 +3,7 @@
   "ip_inst": {
     "xci_name": "ddr4_0",
     "component_reference": "xilinx.com:ip:ddr4:2.2",
-    "ip_revision": "23",
+    "ip_revision": "28",
     "gen_directory": ".",
     "parameters": {
       "component_parameters": {
@@ -41,7 +41,7 @@
         "C0.DDR4_Slot": [ { "value": "Single", "resolve_type": "user", "usage": "all" } ],
         "C0.DDR4_MemoryVoltage": [ { "value": "1.2V", "resolve_type": "user", "usage": "all" } ],
         "C0.DDR4_DataWidth": [ { "value": "72", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "C0.DDR4_DataMask": [ { "value": "NO_DM_NO_DBI", "resolve_type": "user", "usage": "all" } ],
+        "C0.DDR4_DataMask": [ { "value": "NO_DM_NO_DBI", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
         "C0.DDR4_Ecc": [ { "value": "true", "resolve_type": "user", "format": "bool", "enabled": false, "usage": "all" } ],
         "C0.DDR4_MCS_ECC": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "C0.DDR4_AxiSelection": [ { "value": "true", "value_src": "user", "resolve_type": "user", "format": "bool", "usage": "all" } ],
@@ -51,21 +51,21 @@
         "C0.DDR4_BurstType": [ { "value": "Sequential", "resolve_type": "user", "usage": "all" } ],
         "C0.DDR4_OutputDriverImpedenceControl": [ { "value": "RZQ/7", "resolve_type": "user", "usage": "all" } ],
         "C0.DDR4_OnDieTermination": [ { "value": "RZQ/6", "resolve_type": "user", "usage": "all" } ],
-        "C0.DDR4_CasLatency": [ { "value": "17", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "C0.DDR4_CasWriteLatency": [ { "value": "12", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "C0.DDR4_CasLatency": [ { "value": "17", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "C0.DDR4_CasWriteLatency": [ { "value": "12", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C0.DDR4_ChipSelect": [ { "value": "true", "resolve_type": "user", "format": "bool", "enabled": false, "usage": "all" } ],
         "C0.DDR4_isCKEShared": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
-        "C0.DDR4_AxiDataWidth": [ { "value": "512", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "C0.DDR4_AxiDataWidth": [ { "value": "512", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C0.DDR4_AxiArbitrationScheme": [ { "value": "RD_PRI_REG", "resolve_type": "user", "usage": "all" } ],
         "C0.DDR4_AxiNarrowBurst": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
-        "C0.DDR4_AxiAddressWidth": [ { "value": "33", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "C0.DDR4_AxiAddressWidth": [ { "value": "33", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C0.DDR4_AxiIDWidth": [ { "value": "4", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C0.DDR4_Capacity": [ { "value": "512", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C0.DDR4_Mem_Add_Map": [ { "value": "ROW_COLUMN_BANK", "resolve_type": "user", "usage": "all" } ],
         "C0.DDR4_MemoryName": [ { "value": "MainMemory", "resolve_type": "user", "usage": "all" } ],
         "C0.DDR4_AutoPrecharge": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "C0.DDR4_UserRefresh_ZQCS": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
-        "C0.DDR4_CustomParts": [ { "value": "../../../hw/ddr/MT40A1G16KNR-075_REV_E_DIAG2400.csv", "value_src": "user", "resolve_type": "user", "usage": "all", "data_type": "file_csv" } ],
+        "C0.DDR4_CustomParts": [ { "value": "../../ddr/MT40A1G16KNR-075_REV_E_DIAG2400.csv", "value_src": "user", "resolve_type": "user", "usage": "all", "data_type": "file_csv" } ],
         "C0.DDR4_isCustom": [ { "value": "true", "value_src": "user", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "C0.DDR4_SELF_REFRESH": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
         "C0.DDR4_SAVE_RESTORE": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
@@ -141,7 +141,7 @@
         "C0.LR_WIDTH": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C0.CK_WIDTH": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C0.CKE_WIDTH": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
-        "C0.CS_WIDTH": [ { "value": "2", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "C0.CS_WIDTH": [ { "value": "2", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C0.ODT_WIDTH": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "C0.StackHeight": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "PING_PONG_PHY": [ { "value": "1", "resolve_type": "user", "format": "long", "usage": "all" } ],
@@ -291,27 +291,27 @@
         "C0.DDR4_Ecc": [ { "value": "true", "resolve_type": "generated", "format": "bool", "usage": "simulation.tlm" } ]
       },
       "project_parameters": {
-        "ARCHITECTURE": [ { "value": "zynquplus" } ],
-        "BASE_BOARD_PART": [ { "value": "" } ],
-        "BOARD_CONNECTIONS": [ { "value": "" } ],
-        "DEVICE": [ { "value": "xczu19eg" } ],
-        "NEXTGEN_VERSAL": [ { "value": "0" } ],
-        "PACKAGE": [ { "value": "ffvc1760" } ],
-        "PREFHDL": [ { "value": "VERILOG" } ],
-        "SILICON_REVISION": [ { "value": "" } ],
-        "SIMULATOR_LANGUAGE": [ { "value": "MIXED" } ],
-        "SPEEDGRADE": [ { "value": "-2" } ],
-        "STATIC_POWER": [ { "value": "" } ],
-        "TEMPERATURE_GRADE": [ { "value": "E" } ]
+        "ARCHITECTURE": [ { "value": "zynquplus", "resolve_type": "generated", "usage": "all" } ],
+        "BASE_BOARD_PART": [ { "value": "", "resolve_type": "generated", "usage": "all" } ],
+        "BOARD_CONNECTIONS": [ { "value": "", "resolve_type": "generated", "usage": "all" } ],
+        "DEVICE": [ { "value": "xczu19eg", "resolve_type": "generated", "usage": "all" } ],
+        "NEXTGEN_VERSAL": [ { "value": "0", "resolve_type": "generated", "usage": "all" } ],
+        "PACKAGE": [ { "value": "ffvc1760", "resolve_type": "generated", "usage": "all" } ],
+        "PREFHDL": [ { "value": "VERILOG", "resolve_type": "generated", "usage": "all" } ],
+        "SILICON_REVISION": [ { "value": "", "resolve_type": "generated", "usage": "all" } ],
+        "SIMULATOR_LANGUAGE": [ { "value": "MIXED", "resolve_type": "generated", "usage": "all" } ],
+        "SPEEDGRADE": [ { "value": "-2", "resolve_type": "generated", "usage": "all" } ],
+        "STATIC_POWER": [ { "value": "", "resolve_type": "generated", "usage": "all" } ],
+        "TEMPERATURE_GRADE": [ { "value": "E", "resolve_type": "generated", "usage": "all" } ]
       },
       "runtime_parameters": {
         "IPCONTEXT": [ { "value": "IP_Flow" } ],
-        "IPREVISION": [ { "value": "23" } ],
+        "IPREVISION": [ { "value": "28" } ],
         "MANAGED": [ { "value": "TRUE" } ],
         "OUTPUTDIR": [ { "value": "." } ],
         "SELECTEDSIMMODEL": [ { "value": "" } ],
         "SHAREDDIR": [ { "value": "." } ],
-        "SWVERSION": [ { "value": "2024.1" } ],
+        "SWVERSION": [ { "value": "2025.2" } ],
         "SYNTHESISFLOW": [ { "value": "OUT_OF_CONTEXT" } ]
       }
     },
@@ -669,19 +669,7 @@
           }
         }
       }
-    },
-    "contents": {
-      "cpus": {
-        "ddr4_0": {
-          "parameters": {
-            "instance_path": [ { "value": "inst/u_ddr4_mem_intfc/u_ddr_cal_riu/mcs0/inst/microblaze_I" } ],
-            "bootloop_file": [ { "value": "sw/calibration_0/Debug/calibration_ddr.elf" } ],
-            "endian": [ { "value": "little" } ],
-            "processor_type": [ { "value": "MICROBLAZE-LE" } ],
-            "is_visible": [ { "value": "false" } ]
-          }
-        }
-      }
     }
-  }
+  },
+  "checksum": "9feefe92"
 }

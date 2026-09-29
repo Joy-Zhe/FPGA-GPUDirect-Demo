@@ -1,47 +1,62 @@
+diff --git a/QDMA/linux-kernel/driver/src/Makefile b/QDMA/linux-kernel/driver/src/Makefile
+index bb309d9..8b6d308 100755
+--- a/QDMA/linux-kernel/driver/src/Makefile
++++ b/QDMA/linux-kernel/driver/src/Makefile
+@@ -46,6 +46,9 @@ MOD_NAME := qdma$(PFVF_TYPE)
+ 
+ EXTRA_CFLAGS += -DLINUX -D__KERNEL__ -DMODULE -O2 -pipe -Wall -Werror
+ EXTRA_CFLAGS += $(FLAGS) $(CPPFLAGS) $(EXTRA_FLAGS)
++ifneq ($(NVIDIA_P2P_INCLUDE),)
++EXTRA_CFLAGS += -I$(NVIDIA_P2P_INCLUDE)
++endif
+ EXTRA_CFLAGS += -I$(srcdir)/../include
+ EXTRA_CFLAGS += -I$(KSRC)/../include
+ EXTRA_CFLAGS += -I$(srcdir)/../libqdma/qdma_access/qdma_soft_access
 diff --git a/QDMA/linux-kernel/driver/src/cdev.c b/QDMA/linux-kernel/driver/src/cdev.c
-index b7ea455..b0fd290 100755
+index b7ea455..8cc2d83 100755
 --- a/QDMA/linux-kernel/driver/src/cdev.c
 +++ b/QDMA/linux-kernel/driver/src/cdev.c
-@@ -25,3 +25,5 @@
+@@ -23,6 +23,7 @@
+ 
+ #include <asm/cacheflush.h>
  #include <linux/device.h>
-+#include <linux/dma-buf.h>
++#include <nv-p2p.h>
  #include <linux/errno.h>
-+#include <linux/ioctl.h>
  #include <linux/fs.h>
-@@ -76,5 +78,16 @@ enum qdma_cdev_ioctl_cmd {
+ #include <linux/kernel.h>
+@@ -76,6 +77,16 @@ enum qdma_cdev_ioctl_cmd {
  	QDMA_CDEV_IOCTL_CMDS
  };
  
 +#define QDMA_GPU_F_DDR_TO_GPU (1U << 0)
 +struct qdma_gpu_xfer {
-+	__s32 dma_buf_fd;
 +	__u32 flags;
-+	__u64 dma_buf_offset;
++	__u64 gpu_address;
 +	__u64 ddr_offset;
 +	__u64 length;
 +	__u64 transferred;
 +};
-+#define QDMA_IOCTL_GPU_XFER _IOWR('q', 0xf0, struct qdma_gpu_xfer)
++#define QDMA_IOCTL_GPU_P2P_XFER _IOWR('q', 0xf1, struct qdma_gpu_xfer)
 +
  static struct class *qdma_class;
  static struct kmem_cache *cdev_cache;
-@@ -215,5 +228,119 @@ static loff_t cdev_gen_llseek(struct file *file, loff_t off, int whence)
+ 
+@@ -215,6 +226,127 @@ static loff_t cdev_gen_llseek(struct file *file, loff_t off, int whence)
  	return newpos;
  }
  
-+static long cdev_gpu_dmabuf_xfer(struct qdma_cdev *xcdev,
++static long cdev_gpu_p2p_xfer(struct qdma_cdev *xcdev,
 +				unsigned long arg)
 +{
 +	struct qdma_gpu_xfer ux;
-+	struct dma_buf *dbuf;
-+	struct dma_buf_attachment *attach;
-+	struct sg_table *sgt;
-+	struct scatterlist *sg;
++	nvidia_p2p_page_table_t *page_table = NULL;
++	nvidia_p2p_dma_mapping_t *dma_mapping = NULL;
 +	struct qdma_sw_sg *qsg, *cur;
 +	struct qdma_request req = { 0 };
-+	enum dma_data_direction dir;
-+	u64 skip, left;
-+	unsigned int i, nents = 0;
++	u64 left;
++	u64 page_bytes;
++	unsigned int i, nents;
++	unsigned int sgcnt;
 +	unsigned long qhndl;
 +	ssize_t rv;
 +	bool write;
@@ -51,68 +66,71 @@ index b7ea455..b0fd290 100755
 +	if (ux.flags & ~QDMA_GPU_F_DDR_TO_GPU)
 +		return -EINVAL;
 +	if (!ux.length || ux.length > UINT_MAX ||
++	    ux.gpu_address & ((1ULL << 16) - 1) ||
++	    ux.length & ((1ULL << 16) - 1) ||
 +	    ux.ddr_offset >= (1ULL << 33) ||
 +	    ux.length > (1ULL << 33) - ux.ddr_offset)
 +		return -EINVAL;
 +
-+	dbuf = dma_buf_get(ux.dma_buf_fd);
-+	if (IS_ERR(dbuf))
-+		return PTR_ERR(dbuf);
-+	if (ux.dma_buf_offset > dbuf->size ||
-+	    ux.length > dbuf->size - ux.dma_buf_offset) {
-+		rv = -EINVAL;
-+		goto out_put;
-+	}
-+
 +	write = !(ux.flags & QDMA_GPU_F_DDR_TO_GPU);
-+	dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
-+	attach = dma_buf_attach(dbuf, &xcdev->xcb->xpdev->pdev->dev);
-+	if (IS_ERR(attach)) {
-+		rv = PTR_ERR(attach);
-+		goto out_put;
++	rv = nvidia_p2p_get_pages_persistent(ux.gpu_address, ux.length,
++					&page_table, NVIDIA_P2P_FLAGS_DEFAULT);
++	if (rv) {
++		pr_err("%s: nvidia_p2p_get_pages_persistent failed: %zd\n",
++			xcdev->name, rv);
++		goto out;
 +	}
-+	sgt = dma_buf_map_attachment(attach, dir);
-+	if (IS_ERR(sgt)) {
-+		rv = PTR_ERR(sgt);
-+		goto out_detach;
++	rv = nvidia_p2p_dma_map_pages(xcdev->xcb->xpdev->pdev,
++					page_table, &dma_mapping);
++	if (rv) {
++		pr_err("%s: nvidia_p2p_dma_map_pages failed: %zd\n",
++			xcdev->name, rv);
++		goto out_put_pages;
 +	}
-+
-+	skip = ux.dma_buf_offset;
-+	left = ux.length;
-+	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
-+		u64 seglen = sg_dma_len(sg);
-+		if (skip >= seglen) { skip -= seglen; continue; }
-+		nents++;
-+		seglen -= skip;
-+		left -= min_t(u64, left, seglen);
-+		if (!left) break;
-+		skip = 0;
-+	}
-+	if (!nents || left || nents > 65535) {
++	if (!NVIDIA_P2P_DMA_MAPPING_VERSION_COMPATIBLE(dma_mapping)) {
++		pr_err("%s: incompatible NVIDIA DMA mapping version 0x%x\n",
++			xcdev->name, dma_mapping->version);
 +		rv = -EINVAL;
-+		goto out_unmap;
++		goto out_unmap_pages;
++	}
++	if (dma_mapping->page_size_type == NVIDIA_P2P_PAGE_SIZE_64KB)
++		page_bytes = 1ULL << 16;
++	else if (dma_mapping->page_size_type == NVIDIA_P2P_PAGE_SIZE_128KB)
++		page_bytes = 1ULL << 17;
++	else {
++		pr_err("%s: unsupported NVIDIA P2P page-size type %u\n",
++			xcdev->name, dma_mapping->page_size_type);
++		rv = -EINVAL;
++		goto out_unmap_pages;
++	}
++	nents = dma_mapping->entries;
++	if (!nents || nents > 65535) {
++		pr_err("%s: invalid NVIDIA P2P entry count %u\n",
++			xcdev->name, nents);
++		rv = -EINVAL;
++		goto out_unmap_pages;
 +	}
 +	qsg = kcalloc(nents, sizeof(*qsg), GFP_KERNEL);
 +	if (!qsg) {
 +		rv = -ENOMEM;
-+		goto out_unmap;
++		goto out_unmap_pages;
 +	}
-+
-+	skip = ux.dma_buf_offset;
 +	left = ux.length;
 +	cur = qsg;
-+	for_each_sg(sgt->sgl, sg, sgt->nents, i) {
-+		u64 seglen = sg_dma_len(sg), take;
-+		if (skip >= seglen) { skip -= seglen; continue; }
-+		take = min_t(u64, left, seglen - skip);
-+		cur->dma_addr = sg_dma_address(sg) + skip;
-+		cur->len = take;
-+		cur->next = (left == take) ? NULL : cur + 1;
-+		left -= take;
-+		if (!left) break;
++	for (i = 0; i < nents && left; ++i) {
++		cur->dma_addr = dma_mapping->dma_addresses[i];
++		cur->len = min_t(u64, left, page_bytes);
++		cur->next = (left == cur->len) ? NULL : cur + 1;
++		left -= cur->len;
 +		cur++;
-+		skip = 0;
 +	}
++	if (left) {
++		pr_err("%s: NVIDIA P2P mapping is %llu bytes short\n",
++			xcdev->name, left);
++		rv = -EINVAL;
++		goto out_free;
++	}
++	sgcnt = cur - qsg;
 +
 +	qhndl = write ? xcdev->h2c_qhndl : xcdev->c2h_qhndl;
 +	if (!qhndl) {
@@ -120,7 +138,7 @@ index b7ea455..b0fd290 100755
 +		goto out_free;
 +	}
 +	req.sgl = qsg;
-+	req.sgcnt = nents;
++	req.sgcnt = sgcnt;
 +	req.write = write;
 +	req.dma_mapped = 1;
 +	req.ep_addr = ux.ddr_offset;
@@ -134,20 +152,33 @@ index b7ea455..b0fd290 100755
 +	}
 +out_free:
 +	kfree(qsg);
-+out_unmap:
-+	dma_buf_unmap_attachment(attach, sgt, dir);
-+out_detach:
-+	dma_buf_detach(dbuf, attach);
-+out_put:
-+	dma_buf_put(dbuf);
++out_unmap_pages:
++	if (dma_mapping) {
++		nvidia_p2p_dma_unmap_pages(xcdev->xcb->xpdev->pdev, page_table,
++						dma_mapping);
++	}
++out_put_pages:
++	if (page_table) {
++		nvidia_p2p_put_pages_persistent(ux.gpu_address, page_table,
++						NVIDIA_P2P_FLAGS_DEFAULT);
++	}
++out:
 +	return rv;
 +}
 +
  static long cdev_gen_ioctl(struct file *file, unsigned int cmd,
  			unsigned long arg)
-@@ -225,3 +352,5 @@ static long cdev_gen_ioctl(struct file *file, unsigned int cmd,
+ {
+@@ -224,8 +356,9 @@ static long cdev_gen_ioctl(struct file *file, unsigned int cmd,
+ 	case QDMA_CDEV_IOCTL_NO_MEMCPY:
  		get_user(xcdev->no_memcpy, (unsigned char *)arg);
  		return 0;
-+	case QDMA_IOCTL_GPU_XFER:
-+		return cdev_gpu_dmabuf_xfer(xcdev, arg);
- 	default:
+-	default:
+-		break;
++	case QDMA_IOCTL_GPU_P2P_XFER:
++		return cdev_gpu_p2p_xfer(xcdev, arg);
++	default:		break;
+ 	}
+ 	if (xcdev->fp_ioctl_extra)
+ 		return xcdev->fp_ioctl_extra(xcdev, cmd, arg);
+

@@ -1,5 +1,13 @@
 # Repository Agent Instructions
 
+## Background Vivado runs
+
+- Run Vivado synthesis, implementation, and bitstream generation only as detached background jobs.
+- Redirect each background run's stdout and stderr to a timestamped file under `build/logs/` and record its PID beside the log.
+- Before launching a run, check for an existing matching Vivado process and do not start a duplicate.
+- Do not wait for or continuously poll a synthesis, implementation, or bitstream job in the active conversation turn. Report the log path and PID, then continue with work that does not depend on completion.
+- Short project creation, IP validation, and RTL syntax checks may run in the foreground when they do not launch synthesis or implementation.
+
 ## RTL instance formatting
 
 - When instantiating any Verilog or SystemVerilog module, place every named port connection on its own line.

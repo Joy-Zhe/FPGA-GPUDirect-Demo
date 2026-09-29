@@ -24,6 +24,7 @@
 
 # Host build output
 /host/gpu_p2p_test
+/host/gpu_staging_test
 *.o
 *.ko
 Module.symvers

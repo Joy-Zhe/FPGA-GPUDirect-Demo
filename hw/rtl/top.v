@@ -63,6 +63,14 @@ xpm_cdc_single #(
     wire                 [   1: 0]      la_bresp,la_rresp          ;
     wire                                la_awvalid,la_awready,la_wvalid,la_wready,la_bvalid,la_bready  ;
     wire                                la_arvalid,la_arready,la_rvalid,la_rready  ;
+    wire                 [  39: 0]      ctrl_awaddr,ctrl_araddr    ;
+    wire                 [  31: 0]      ctrl_wdata,ctrl_rdata      ;
+    wire                 [   3: 0]      ctrl_wstrb                 ;
+    wire                 [   2: 0]      ctrl_awprot,ctrl_arprot    ;
+    wire                 [   1: 0]      ctrl_bresp,ctrl_rresp      ;
+    wire                                ctrl_awvalid,ctrl_awready,ctrl_wvalid,ctrl_wready  ;
+    wire                                ctrl_bvalid,ctrl_bready,ctrl_arvalid,ctrl_arready  ;
+    wire                                ctrl_rvalid,ctrl_rready    ;
 
 qdma_0 u_qdma (
     .sys_clk                            (sys_clk                   ),
@@ -259,27 +267,75 @@ axi_clock_converter_0 u_cdc (
     .m_axi_rready                       (d_rready                  )
 );
 
+ps_subsystem_wrapper u_ps_subsystem (
+    .M_AXI_CTRL_araddr                  (ctrl_araddr               ),
+    .M_AXI_CTRL_arprot                  (ctrl_arprot               ),
+    .M_AXI_CTRL_arready                 (ctrl_arready              ),
+    .M_AXI_CTRL_arvalid                 (ctrl_arvalid              ),
+    .M_AXI_CTRL_awaddr                  (ctrl_awaddr               ),
+    .M_AXI_CTRL_awprot                  (ctrl_awprot               ),
+    .M_AXI_CTRL_awready                 (ctrl_awready              ),
+    .M_AXI_CTRL_awvalid                 (ctrl_awvalid              ),
+    .M_AXI_CTRL_bready                  (ctrl_bready               ),
+    .M_AXI_CTRL_bresp                   (ctrl_bresp                ),
+    .M_AXI_CTRL_bvalid                  (ctrl_bvalid               ),
+    .M_AXI_CTRL_rdata                   (ctrl_rdata                ),
+    .M_AXI_CTRL_rready                  (ctrl_rready               ),
+    .M_AXI_CTRL_rresp                   (ctrl_rresp                ),
+    .M_AXI_CTRL_rvalid                  (ctrl_rvalid               ),
+    .M_AXI_CTRL_wdata                   (ctrl_wdata                ),
+    .M_AXI_CTRL_wready                  (ctrl_wready               ),
+    .M_AXI_CTRL_wstrb                   (ctrl_wstrb                ),
+    .M_AXI_CTRL_wvalid                  (ctrl_wvalid               ),
+    .S_AXI_HOST_araddr                  ({8'd0,la_araddr}          ),
+    .S_AXI_HOST_arprot                  (la_arprot                 ),
+    .S_AXI_HOST_arready                 (la_arready                ),
+    .S_AXI_HOST_arvalid                 (la_arvalid                ),
+    .S_AXI_HOST_awaddr                  ({8'd0,la_awaddr}          ),
+    .S_AXI_HOST_awprot                  (la_awprot                 ),
+    .S_AXI_HOST_awready                 (la_awready                ),
+    .S_AXI_HOST_awvalid                 (la_awvalid                ),
+    .S_AXI_HOST_bready                  (la_bready                 ),
+    .S_AXI_HOST_bresp                   (la_bresp                  ),
+    .S_AXI_HOST_bvalid                  (la_bvalid                 ),
+    .S_AXI_HOST_rdata                   (la_rdata                  ),
+    .S_AXI_HOST_rready                  (la_rready                 ),
+    .S_AXI_HOST_rresp                   (la_rresp                  ),
+    .S_AXI_HOST_rvalid                  (la_rvalid                 ),
+    .S_AXI_HOST_wdata                   (la_wdata                  ),
+    .S_AXI_HOST_wready                  (la_wready                 ),
+    .S_AXI_HOST_wstrb                   (la_wstrb                  ),
+    .S_AXI_HOST_wvalid                  (la_wvalid                 ),
+    .ctrl_aclk                          (axi_aclk                  ),
+    .ctrl_aresetn                       (axi_aresetn               ),
+    .ps_irq                             (1'b0                      ),
+    .ps_pl_clk0                         (                          ),
+    .ps_pl_clk1                         (                          ),
+    .ps_pl_clk2                         (                          ),
+    .ps_pl_resetn                       (                          )
+);
+
 axi_lite_status u_regs (
     .aclk                               (axi_aclk                  ),
     .aresetn                            (axi_aresetn               ),
     .ddr_calib_done                     (calib_axi                 ),
-    .s_awaddr                           (la_awaddr[11:0]           ),
-    .s_awvalid                          (la_awvalid                ),
-    .s_awready                          (la_awready                ),
-    .s_wdata                            (la_wdata                  ),
-    .s_wstrb                            (la_wstrb                  ),
-    .s_wvalid                           (la_wvalid                 ),
-    .s_wready                           (la_wready                 ),
-    .s_bresp                            (la_bresp                  ),
-    .s_bvalid                           (la_bvalid                 ),
-    .s_bready                           (la_bready                 ),
-    .s_araddr                           (la_araddr[11:0]           ),
-    .s_arvalid                          (la_arvalid                ),
-    .s_arready                          (la_arready                ),
-    .s_rdata                            (la_rdata                  ),
-    .s_rresp                            (la_rresp                  ),
-    .s_rvalid                           (la_rvalid                 ),
-    .s_rready                           (la_rready                 )
+    .s_awaddr                           (ctrl_awaddr[11:0]         ),
+    .s_awvalid                          (ctrl_awvalid              ),
+    .s_awready                          (ctrl_awready              ),
+    .s_wdata                            (ctrl_wdata                ),
+    .s_wstrb                            (ctrl_wstrb                ),
+    .s_wvalid                           (ctrl_wvalid               ),
+    .s_wready                           (ctrl_wready               ),
+    .s_bresp                            (ctrl_bresp                ),
+    .s_bvalid                           (ctrl_bvalid               ),
+    .s_bready                           (ctrl_bready               ),
+    .s_araddr                           (ctrl_araddr[11:0]         ),
+    .s_arvalid                          (ctrl_arvalid              ),
+    .s_arready                          (ctrl_arready              ),
+    .s_rdata                            (ctrl_rdata                ),
+    .s_rresp                            (ctrl_rresp                ),
+    .s_rvalid                           (ctrl_rvalid               ),
+    .s_rready                           (ctrl_rready               )
 );
 
 ddr4_0 u_ddr (
